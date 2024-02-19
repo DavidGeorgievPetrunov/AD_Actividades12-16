@@ -134,4 +134,108 @@
             }
         }
 
+# HIBERNATE
+        
+    public class HibernateExercise {
+
+        static SessionFactory factory;
+
+        // Main
+        public static void main(String[] args) {
+
+            Configuration cfg = new Configuration();
+            cfg.configure("/com/mycompany/config/hibernate.cfg.xml");
+            factory = cfg.buildSessionFactory();
+        }
+        factory.close();
+    }
+    
+    private static void insertStudent(String nombre, String lastname, int age, String email, String phone) {
+        Session session = null;
+        try {
+            session = factory.openSession();
+            Transaction transaction = null;
+
+            try {
+                transaction = session.beginTransaction();
+
+                Student newStudent = new Student();
+                newStudent.setName(nombre);
+                //Set everything
+
+                session.save(newStudent);
+
+                transaction.commit();
+            }
+        }
+    }
+
+
+    private static void updateStudent(int id, String nombre, String lastname, int age, String email, String phone) {
+    // Session null 
+        try {
+            // Open session set transaction null
+
+            try {
+                transaction = session.beginTransaction();
+
+                Student existingStudent = (Student) session.get(Student.class, id);
+
+                if (existingStudent != null) {
+
+                    existingStudent.setName(nombre);
+                    // Set everthing
+
+                    session.update(existingStudent);
+
+                    transaction.commit();
+                }
+            }
+        }
+    }
+
+    private static void deleteStudent(int id) {
+    // Session null 
+        try {
+            // Open session set transaction null
+
+            try {
+                transaction = session.beginTransaction();
+
+                Student existingStudent = (Student) session.get(Student.class, id);
+
+                if (existingStudent != null) {
+                    session.delete(existingStudent);
+
+                    transaction.commit();
+                }
+            }
+        }
+    }
+
+    private static Student getStudent(int id) {
+        // Session null
+        try {
+            session = factory.openSession();
+
+            Student student = (Student) session.get(Student.class, id);
+        }
+    }
+    
+    private static List<Student> listStudents() {
+        List<Student> students = new ArrayList<>();
+        // Session null
+
+        try {
+            session = factory.openSession();
+
+            // Basicamente un "select * from student;"
+
+            String hql = "FROM Student";
+            Query query = session.createQuery(hql);
+            students = query.list();
+        }
+    }
+
+
 

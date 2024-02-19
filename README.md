@@ -237,5 +237,158 @@
         }
     }
 
+# MONGODB
+    public class MongoDBConnector {
+    
+        private MongoClient mongoClient;
+        private MongoDatabase database;
+    
+        public MongoDBConnector() {
+            this.mongoClient = MongoClients.create();
+            this.database = mongoClient.getDatabase("reservesDB");
+        }
+    
+        public MongoDatabase getDatabase() {
+            return database;
+        }
+    
+    }
+    
+    public class BookingDAO {
+    
+        private MongoCollection<Document> collection;
+    
+        public BookingDAO() {
+            this.collection = new MongoDBConnector().getDatabase().getCollection("reservas");
+        }
+    
+        public void insertarReserva(Booking bookingD) {
+                Document booking = new Document("location_number", bookingD.getId())
+                    .append("client", bookingD.getClient())
+                   //Hacemos append de todos los parametros.
+    
+                collection.insertOne(booking);
+                System.out.println("Reserva insertada correctamente.");
+            }
+    
+        public void mostrarReserva() {
+            MongoCursor<Document> cursor = collection.find().iterator();
+            while (cursor.hasNext()) {
+                System.out.println(cursor.next().toJson());
+            }
+        }
+    
+        public void actualizarPreuReserva(int id, double newPrice) {
+            Document update = new Document("$set", new Document("price", newPrice));
+            collection.updateOne(existingDocument, update);
+            System.out.println("Precio reserva actualizado.");
+        }
+    
+        public void eliminarReserva(int id) {
+            collection.deleteOne(existingDocument);
+            System.out.println("Reserva con id: " + id + "eliminada correctamente.");    
+        }
+    
+        void dropCollection() {
+            collection.drop();
+        }
+    
+    }    
 
+# CRUD JAX-RS
+
+    @ApplicationPath("/api")
+    public class HelloApplication extends Application {
+    
+    }
+
+    @Path("/bookings")
+    public class HelloResource {
+        Vector<Booking> bookings;
+        public String xmlFile = "C:\\Users\\david\\OneDrive\\Documentos\\NetBeansProjects\\AD_A16_DavidGeorgievPetrunov\\src\\main\\java\\com\\mycompany\\ad_a16_davidgeorgievpetrunov\\bookings.xml";
+    
+        @PostConstruct
+        public void init() {
+            this.bookings = cargarDatos();
+            if (bookings == null) {
+                System.out.println("Ha habido un error cargando los datos");
+            }
+        }
+    
+        @GET
+        @Path("/get")
+        @Produces("application/json")
+        public String getBookingsJson() throws IOException {
+            ObjectMapper objectMapper = new ObjectMapper();
+            return objectMapper.writeValueAsString(this.bookings);
+        }
+    
+        @POST
+        @Path("/post")
+        @Produces(MediaType.APPLICATION_JSON)
+        @Consumes(MediaType.APPLICATION_JSON)
+        public Response createBooking(Booking newBooking) {
+            this.bookings.add(newBooking);
+            System.out.println(newBooking.toString());
+            writeBookingsToXML();
+            updateXML();
+            
+            return Response.status(Response.Status.NOT_FOUND).entity("Reserva con ID proporcionado: " + newBooking.id + " ya existe.").build();
+        }
+    
+        private void updateXML() {
+            try {
+                JAXBContext context = JAXBContext.newInstance(this.bookings.getClass());
+    
+                Marshaller marshaller = context.createMarshaller();
+                marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
+                marshaller.marshal(this.bookings, new File(xmlFile));
+    
+            } catch (JAXBException e) {
+                e.printStackTrace();
+            }
+        }
+    
+        @PUT
+        @Path("/update/{id}")
+        @Produces(MediaType.APPLICATION_JSON)
+        @Consumes(MediaType.APPLICATION_JSON)
+        public Response updateBooking(@PathParam("id") String id, Booking updatedBooking) {
+            try {
+    
+                boolean found = false;
+                for (Booking booking : bookings) {
+                    if (String.valueOf(booking.getId()).equals(id)) {
+    
+                        booking.setIdClient(updatedBooking.getIdClient());
+                        //Set all parameters
+    
+                        found = true;
+                        break;
+                    }
+                }
+                
+                writeBookingsToXML();
+                init();    
+                return Response.ok(bookings).build();
+            } catch (Exception e) {
+                e.printStackTrace();
+                return Response.serverError().entity("Error al actualizar la reserva: " + e.getMessage()).build();
+            }
+        }
+    
+    
+        @DELETE
+        @Path("/delete/{id}")
+        public Response deleteBooking(@PathParam("id") String id) {
+    
+            boolean removed = bookings.removeIf(booking -> String.valueOf(booking.getId()).equals(id));
+    
+            if (removed) {
+                writeBookingsToXML();
+                init();
+                return Response.status(Response.Status.NOT_FOUND).entity("Reserva con id: "+ id +" borrada con exito.").build();
+            } 
+        }
+    }
 
